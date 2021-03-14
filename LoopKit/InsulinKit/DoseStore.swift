@@ -409,7 +409,9 @@ extension DoseStore {
         // Consider any entries longer than 30 minutes, or with a value of 0, to be unreliable
         let maximumInterval = TimeInterval(minutes: 30)
         
-        let continuityStartDate = date.addingTimeInterval(-insulinModelSettings.longestEffectDuration)
+        let effectDuration = insulinModel?.effectDuration ?? .hours(6)
+        
+        let continuityStartDate = date.addingTimeInterval(effectDuration)
 
         if  let recentReservoirObjects = try? self.getReservoirObjects(since: continuityStartDate - maximumInterval),
             let oldestRelevantReservoirObject = recentReservoirObjects.last
