@@ -38,6 +38,8 @@ public protocol PumpManagerDelegate: DeviceManagerDelegate, PumpManagerStatusObs
 
     func pumpManager(_ pumpManager: PumpManager, hasNewPumpEvents events: [NewPumpEvent], lastReconciliation: Date?, completion: @escaping (_ error: Error?) -> Void)
 
+    func pumpManager(_ pumpManager: PumpManager, hasNewBasalRateSchedule basalRateSchedule: BasalRateSchedule, completion: @escaping (_ error: Error?) -> Void)
+
     func pumpManager(_ pumpManager: PumpManager, didReadReservoirValue units: Double, at date: Date, completion: @escaping (_ result: PumpManagerResult<(newValue: ReservoirValue, lastValue: ReservoirValue?, areStoredValuesContinuous: Bool)>) -> Void)
 
     func pumpManager(_ pumpManager: PumpManager, didAdjustPumpClockBy adjustment: TimeInterval)
@@ -92,7 +94,7 @@ public protocol PumpManager: DeviceManager {
 
     /// The time of the last reconciliation with the pump's event history
     var lastReconciliation: Date? { get }
-    
+
     /// The most-recent status
     var status: PumpManagerStatus { get }
 
@@ -104,14 +106,14 @@ public protocol PumpManager: DeviceManager {
     ///   - observer: The observing object
     ///   - queue: The queue on which the observer methods should be called
     func addStatusObserver(_ observer: PumpManagerStatusObserver, queue: DispatchQueue)
-    
+
     /// Removes an observer of changes in PumpManagerStatus
     ///
     /// Since observers are held weakly, calling this method is not required when the observer is deallocated
     ///
     /// - Parameter observer: The observing object
     func removeStatusObserver(_ observer: PumpManagerStatusObserver)
-    
+
     /// Fetch the pump data (reservoir/events) if it is out of date.
     /// After a successful fetch, the PumpManager should trigger a loop by calling the delegate method `pumpManagerRecommendsLoop(_:)`
     func assertCurrentPumpData()

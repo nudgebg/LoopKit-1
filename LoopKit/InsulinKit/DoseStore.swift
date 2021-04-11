@@ -14,9 +14,9 @@ import os.log
 public protocol DoseStoreDelegate: class {
     /**
      Asks the delegate to upload recently-added pump events not yet marked as uploaded.
-     
+
      The completion handler must be called in all circumstances, with an array of object IDs that were successfully uploaded and can be purged when they are no longer recent.
-     
+
      - parameter doseStore:  The store instance
      - parameter pumpEvents: The pump events
      - parameter completion: The closure to execute when the upload attempt has finished. If no events were uploaded, call the closure with an empty array.
@@ -34,9 +34,9 @@ public enum DoseStoreResult<T> {
 
 /**
  Manages storage, retrieval, and calculation of insulin pump delivery data.
- 
+
  Pump data are stored in the following tiers:
- 
+
  * In-memory cache, used for IOB and insulin effect calculation
  ```
  0            [1.5 * insulinActionDuration]
@@ -56,7 +56,7 @@ public enum DoseStoreResult<T> {
  Private members should be assumed to not be thread-safe, and access should be contained to within blocks submitted to `persistenceStore.managedObjectContext`, which executes them on a private, serial queue.
  */
 public final class DoseStore {
-    
+
     /// Notification posted when data was modifed.
     public static let valuesDidChange = NSNotification.Name(rawValue: "com.loopkit.DoseStore.valuesDidChange")
 
@@ -410,7 +410,10 @@ extension DoseStore {
         if let insulinModel = insulinModel {
             // Consider any entries longer than 30 minutes, or with a value of 0, to be unreliable
             let maximumInterval = TimeInterval(minutes: 30)
-            let continuityStartDate = date.addingTimeInterval(-insulinModel.effectDuration)
+
+            let effectDuration = insulinModel?.effectDuration ?? .hours(6)
+
+            let continuityStartDate = date.addingTimeInterval(-effectDuration)
 
             if  let recentReservoirObjects = try? self.getReservoirObjects(since: continuityStartDate - maximumInterval),
                 let oldestRelevantReservoirObject = recentReservoirObjects.last
@@ -421,7 +424,7 @@ extension DoseStore {
                     to: date,
                     within: maximumInterval
                 )
-                
+
                 // also make sure prime events don't exist withing the insulin action duration
                 let primeEventExistsWithinInsulinActionDuration = (lastRecordedPrimeEventDate ?? .distantPast) >= oldestRelevantReservoirObject.startDate
 
@@ -691,7 +694,7 @@ extension DoseStore {
 extension DoseStore {
     /**
      Adds and persists new pump events.
-     
+
      Events are deduplicated by a unique constraint on `NewPumpEvent.getter:raw`.
 
      - parameter events: An array of new pump events. Pump events should have end times reflective of when delivery is actually expected to be finished, as doses that end prior to a reservoir reading are ignored when reservoir data is being used.
@@ -799,7 +802,7 @@ extension DoseStore {
             self.persistenceController.save { (error) in
                 completion(DoseStoreError(error: error))
                 NotificationCenter.default.post(name: DoseStore.valuesDidChange, object: self)
-                
+
                 self.lastRecordedPrimeEventDate = nil
                 self.validateReservoirContinuity()
             }
@@ -915,7 +918,7 @@ extension DoseStore {
                 assertionFailure()
                 return
             }
-            
+
             guard !doses.isEmpty else
             {
                 completion(.success([]))

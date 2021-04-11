@@ -110,7 +110,7 @@ public final class MockCGMManager: TestingCGMManager {
 
     public let managedDataInterval: TimeInterval? = nil
 
-    public let shouldSyncToRemoteService = false
+    public let shouldSyncToRemoteService = true
 
     public func fetchNewDataIfNeeded(_ completion: @escaping (CGMResult) -> Void) {
         dataSource.fetchNewData(completion)
@@ -124,7 +124,7 @@ public final class MockCGMManager: TestingCGMManager {
             }
         }
     }
-    
+
     private func setupGlucoseUpdateTimer() {
         glucoseUpdateTimer = Timer.scheduledTimer(withTimeInterval: dataSource.dataPointFrequency, repeats: true) { [weak self] _ in
             guard let self = self else { return }
