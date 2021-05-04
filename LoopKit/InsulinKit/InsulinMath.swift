@@ -552,24 +552,59 @@ extension Collection where Element == DoseEntry {
                         // For older pumps which don't report the start/end of scheduled basal delivery,
                         // generate a basal entry from the specified schedule.
                         for scheduled in basalSchedule.between(start: lastBasal.endDate, end: dose.startDate) {
-                            // Generate a unique identifier based on the start/end timestamps
-                            let start = Swift.max(lastBasal.endDate, scheduled.startDate)
-                            let end = Swift.min(dose.startDate, scheduled.endDate)
+                            
+                            // Start Jon Edit for IOB basal entries
+                            let duration = scheduled.endDate.timeIntervalSince1970 - scheduled.startDate.timeIntervalSince1970
+                            let hourCountExact = duration / 3600
+                            let hourCountLoops = hourCountExact.rounded()
+                            
+                            if duration > 3600 {
+                                for i in stride(from: 1, to: hourCountLoops, by: 1) {
+                                    
+                                    let startShift = scheduled.startDate.addingTimeInterval((i * 3600) - 3600)
+                                    let endShift = startShift.addingTimeInterval(3600)
+                                    let syncStart = Swift.max(lastBasal.endDate, startShift)
+                                    let syncEnd = Swift.min(dose.startDate, endShift)
 
-                            guard end.timeIntervalSince(start) > .ulpOfOne else {
-                                continue
+                                    guard endShift.timeIntervalSince(startShift) > .ulpOfOne else {
+                                        continue
+                                    }
+                                        
+                                    let syncIdentifier = "BasalRateSchedule \(dateFormatter.string(from: syncStart)) \(dateFormatter.string(from: syncEnd))"
+
+                                    newEntries.append(DoseEntry(
+                                        type: .basal,
+                                        startDate: syncStart,
+                                        endDate: syncEnd,
+                                        value: scheduled.value,
+                                        unit: .unitsPerHour,
+                                        syncIdentifier: syncIdentifier
+                                    ))
+                                   
+                                }
+
+                            } else {
+                                
+                                
+                                let start = Swift.max(lastBasal.endDate, scheduled.startDate)
+                                let end = Swift.min(dose.startDate, scheduled.endDate)
+
+                                guard end.timeIntervalSince(start) > .ulpOfOne else {
+                                    continue
+                                }
+                                
+                                let syncIdentifier = "BasalRateSchedule \(dateFormatter.string(from: start)) \(dateFormatter.string(from: end))"
+
+                                newEntries.append(DoseEntry(
+                                    type: .basal,
+                                    startDate: start,
+                                    endDate: end,
+                                    value: scheduled.value,
+                                    unit: .unitsPerHour,
+                                    syncIdentifier: syncIdentifier
+                                ))
                             }
-
-                            let syncIdentifier = "BasalRateSchedule \(dateFormatter.string(from: start)) \(dateFormatter.string(from: end))"
-
-                            newEntries.append(DoseEntry(
-                                type: .basal,
-                                startDate: start,
-                                endDate: end,
-                                value: scheduled.value,
-                                unit: .unitsPerHour,
-                                syncIdentifier: syncIdentifier
-                            ))
+                            
                         }
                     }
                 }
