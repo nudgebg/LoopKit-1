@@ -556,12 +556,17 @@ extension Collection where Element == DoseEntry {
                             // Start Jon Edit for IOB basal entries
                             let duration = scheduled.endDate.timeIntervalSince1970 - scheduled.startDate.timeIntervalSince1970
                             let hourCountExact = duration / 3600
-                            let hourCountLoops = hourCountExact.rounded()
+                            let hourCountFloor: Int = Int(floor(hourCountExact))
+                            let remainder: Double = hourCountExact - Double(hourCountFloor)
+                            
+                            var lastEnd = Swift.min(dose.startDate, scheduled.endDate)
                             
                             if duration > 3600 {
-                                for i in stride(from: 1, to: hourCountLoops, by: 1) {
+                                
+                                // All Basals split by hour exact last partial hour
+                                for i in stride(from: 1, to: hourCountFloor, by: 1) {
                                     
-                                    let startShift = scheduled.startDate.addingTimeInterval((i * 3600) - 3600)
+                                    let startShift = scheduled.startDate.addingTimeInterval((Double(i) * 3600) - 3600)
                                     let endShift = startShift.addingTimeInterval(3600)
                                     let syncStart = Swift.max(lastBasal.endDate, startShift)
                                     let syncEnd = Swift.min(dose.startDate, endShift)
@@ -580,11 +585,32 @@ extension Collection where Element == DoseEntry {
                                         unit: .unitsPerHour,
                                         syncIdentifier: syncIdentifier
                                     ))
-                                   
+                                    
+                                    lastEnd = syncEnd
+                                }
+                                
+                                if remainder > 0.0 {
+                                    let start = lastEnd
+                                    let end = Swift.min(dose.startDate, scheduled.endDate)
+
+                                    guard end.timeIntervalSince(start) > .ulpOfOne else {
+                                        continue
+                                    }
+                                    
+                                    let syncIdentifier = "BasalRateSchedule \(dateFormatter.string(from: start)) \(dateFormatter.string(from: end))"
+
+                                    newEntries.append(DoseEntry(
+                                        type: .basal,
+                                        startDate: start,
+                                        endDate: end,
+                                        value: scheduled.value * remainder,
+                                        unit: .unitsPerHour,
+                                        syncIdentifier: syncIdentifier
+                                    ))
+
                                 }
 
                             } else {
-                                
                                 
                                 let start = Swift.max(lastBasal.endDate, scheduled.startDate)
                                 let end = Swift.min(dose.startDate, scheduled.endDate)
